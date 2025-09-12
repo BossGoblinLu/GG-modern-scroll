@@ -1,269 +1,236 @@
 <!--
-  Modern Scroll – Single-file base template (HTML+CSS+JS)
-  Goal: subtle moving mist background + elegant gold/turquoise theme + negative space
-        + "sigil" navigation (+ optional gesture) + smooth, quick transitions.
+  Modern Scroll – "Ruin Triangles" Layout (single-file, copy‑paste)
+  Purpose: Artsy layout with ancient triangular ruins around the border (they glow on hover/click)
+           + central content panel that disperses into mist and reforms on navigation.
 
-  ✱ How to use: Save this whole file as index.html and deploy.
-  Everything is labeled in plain language so you can find/adjust things quickly.
+  HOW TO USE:
+  1) Save this file as index.html in your GitHub repo.
+  2) Deploy with Vercel (no build step). Connect your GoDaddy domain as previously instructed.
 
-  Accessibility:
-  - Screen-reader friendly nav (buttons/links still behave like buttons).
-  - Respects OS "Reduce Motion" setting + includes a manual toggle.
-
-  Performance guardrails:
-  - Animations use transform/opacity when possible (fast on GPU).
-  - SVG filter for a tiny "mist warp" runs only during transitions (<1s).
-  - Background mist is super light (CSS gradients). You can switch to a video loop easily (search for VIDEO OPTION below).
+  DESIGN CHOICES (professional + smooth):
+  - Background mist leaks in from edges using large radial gradients (GPU‑cheap) that drift slowly.
+  - Ruins are inline SVG triangles (accessible <button>s). Hover/click adds turquoise glow.
+  - Transitions rely on opacity/blur transforms (fast). Tiny SVG warp runs < 1s for atmosphere.
+  - Motion can be disabled via Reduce Motion toggle (keeps site accessible).
 -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Modern Scroll – Mist Template</title>
+  <title>Modern Scroll – Ruin Triangles</title>
 
   <style>
-    /* ==========================
-       0) BRAND COLORS + KNOBS
-       Change these to tune the vibe site‑wide.
-       ========================== */
+    /* =====================================
+       0) BRAND + TUNING KNOBS (edit here)
+       ===================================== */
     :root{
-      --paper: #f5f2e8;          /* parchment background */
-      --turquoise: #009ca6;      /* glowing turquoise accent */
-      --gold: #c9a646;           /* warm metallic gold */
-      --ink: rgba(0,0,0,.8);     /* dark text (not pure black) */
-      --maxw: 1000px;            /* max text width for comfy reading */
+      --paper: #f5f2e8;          /* parchment */
+      --turquoise: #009ca6;      /* mist + glow */
+      --gold: #c9a646;           /* ruins + accents */
+      --ink: rgba(20,18,16,.92); /* readable text */
+      --maxw: 980px;             /* content width */
 
-      /* motion + intensity knobs */
-      --mist-opacity: .18;       /* default mist visibility (0–.35) */
-      --mist-blur: 28px;         /* softness of mist */
-      --mist-speed-1: 28s;       /* slow drift speed */
-      --mist-speed-2: 37s;       /* second parallax speed */
+      /* Mist behavior */
+      --mist-opacity: .22;       /* edge mist visibility (.12–.30 good) */
+      --mist-blur: 34px;         /* softness */
+      --mist-speed-1: 30s;       /* drift speeds */
+      --mist-speed-2: 42s;
 
-      --transition-ms: 850ms;    /* length of content transitions */
+      /* Transitions */
+      --transition-ms: 900ms;
       --transition-ease: cubic-bezier(.2,.7,.2,1);
-      --sigil-size: 52px;        /* size of the gold symbol buttons */
+
+      /* Ruins */
+      --ruin-size: 54px;         /* triangle size */
+      --ruin-gap: 12px;          /* spacing between triangles */
     }
 
     /* ==========================
-       1) PAGE LAYOUT BASICS
+       1) PAGE BASICS
        ========================== */
     html,body{height:100%;}
-    body{
-      margin:0;
-      background: var(--paper);
-      color: var(--ink);
-      font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
-    }
-
-    .page{ position:relative; min-height:100dvh; overflow-x:hidden; }
+    body{ margin:0; background:var(--paper); color:var(--ink); font:16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; }
+    .page{ position:relative; min-height:100dvh; overflow:hidden; }
 
     /* ==========================
-       2) BACKGROUND MIST (always moving, super subtle)
-       - CSS gradients drift very slowly; cheap & smooth.
-       - We keep this behind everything using z-index.
+       2) EDGE MIST BACKGROUND (leaks from corners)
+       - uses big radial gradients at corners/edges; slow background-position drift
        ========================== */
-    .mist{
-      position:absolute; inset:-20vmax; z-index:0; pointer-events:none;
-      /* Three giant radial gradients in turquoise with transparency */
+    .mist{ position:absolute; inset:-25vmax; z-index:0; pointer-events:none; opacity:var(--mist-opacity); filter:blur(var(--mist-blur)); transform:translateZ(0);
       background:
-        radial-gradient(120vmax 90vmax at 10% 5%, rgba(0,156,166,.10), transparent 60%),
-        radial-gradient(90vmax 70vmax at 95% 85%, rgba(0,156,166,.06), transparent 60%),
-        radial-gradient(110vmax 80vmax at 0% 100%, rgba(0,156,166,.05), transparent 60%);
-      filter: blur(var(--mist-blur));
-      opacity: var(--mist-opacity);
-      transform: translateZ(0); /* hint GPU */
-      animation: mistDrift1 var(--mist-speed-1) linear infinite,
-                 mistDrift2 var(--mist-speed-2) linear infinite reverse;
+        /* top-left turquoise leak */
+        radial-gradient(120vmax 90vmax at -10% -10%, rgba(0,156,166,.18), transparent 60%),
+        /* bottom-right turquoise leak */
+        radial-gradient(120vmax 90vmax at 110% 110%, rgba(0,156,166,.15), transparent 60%),
+        /* subtle side swells */
+        radial-gradient(80vmax 70vmax at 0% 50%, rgba(0,156,166,.08), transparent 60%),
+        radial-gradient(80vmax 70vmax at 100% 50%, rgba(0,156,166,.08), transparent 60%);
+      animation: driftA var(--mist-speed-1) linear infinite, driftB var(--mist-speed-2) linear infinite reverse;
     }
-    @keyframes mistDrift1{ 0%{ transform: translate3d(0,0,0) scale(1.02);} 50%{ transform: translate3d(2vw,-1vh,0) scale(1.03);} 100%{ transform: translate3d(0,0,0) scale(1.02);} }
-    @keyframes mistDrift2{ 0%{ background-position: 0 0, 0 0, 0 0;} 100%{ background-position: 2vw -1vh, -2vw 1vh, 1vw 2vh; } }
-
-    /* During transitions we gently increase mist presence for drama */
-    .mist.is-strong{ opacity: calc(var(--mist-opacity) + .10); filter: blur(calc(var(--mist-blur) + 6px)); }
+    @keyframes driftA{ 0%{ transform:translate3d(0,0,0) scale(1.03);} 50%{ transform:translate3d(1.6vw,-1.2vh,0) scale(1.035);} 100%{ transform:translate3d(0,0,0) scale(1.03);} }
+    @keyframes driftB{ 0%{ background-position: 0 0, 0 0, 0 0, 0 0;} 100%{ background-position: 2vw -1vh, -2vw 1vh, 1vw 0, -1vw 0; } }
+    .mist.is-strong{ opacity: calc(var(--mist-opacity) + .10); filter:blur(calc(var(--mist-blur) + 6px)); }
 
     /* ==========================
-       2b) OPTIONAL VIDEO OPTION (commented out)
-       - If you prefer a tiny seamless video loop instead of CSS, uncomment both the HTML <video> and CSS below.
-       - Keep video file small (<1MB), 720p, subtle.
+       3) CENTRAL CONTENT PANEL (framed scroll)
+       - large white/cream panel with faint inner gradient; heavy negative space
        ========================== */
-    /*
-    .mist-video{ position:absolute; inset:0; object-fit:cover; z-index:0; opacity:.18; filter:blur(12px); }
-    */
-
-    /* ==========================
-       3) CONTENT WRAPPER
-       - z-index above the mist so content sits on top.
-       ========================== */
-    .content{ position:relative; z-index:1; }
-
-    header{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: clamp(16px, 3vw, 24px); max-width:var(--maxw); margin:0 auto; }
-
-    .brand{
-      display:flex; align-items:baseline; gap:.6rem;
-      font-weight:700; letter-spacing:.02em; color: var(--ink);
+    .content{ position:relative; z-index:1; display:grid; place-items:center; padding: min(6vw, 48px); }
+    .panel{ width:min(92vw, var(--maxw)); min-height: clamp(420px, 70vh, 780px); box-sizing:border-box;
+      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.85));
+      border: 1px solid color-mix(in oklab, var(--gold) 55%, black 8%);
+      outline: 16px solid rgba(255,255,255,.18); /* museum mat feel */
+      box-shadow: 0 40px 140px rgba(0,0,0,.10);
+      padding: clamp(18px, 3.6vw, 36px);
     }
-    .brand .accent{ color: var(--gold); font-weight:800; }
 
-    /* ==========================
-       4) SIGIL NAVIGATION (gold symbols)
-       - Buttons are real <button>s for accessibility.
-       - We use a simple SVG shape to feel "ornamental" but minimal.
-       ========================== */
-    .sigils{ display:flex; gap:.6rem; }
-    .sigil{
-      width: var(--sigil-size); height: var(--sigil-size);
-      border-radius: 999px; border: 1px solid color-mix(in oklab, var(--gold) 90%, black 10%);
-      background: radial-gradient(120% 160% at 30% 20%, color-mix(in oklab, var(--gold) 65%, white 35%), color-mix(in oklab, var(--gold) 95%, black 5%));
-      color:#2b2b2b; display:grid; place-items:center; cursor:pointer; position:relative; isolation:isolate;
-      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
-    }
-    .sigil:hover{ transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
-    .sigil:active{ transform: translateY(0) scale(.98); }
-    .sigil svg{ width:56%; height:56%; opacity:.92; mix-blend-mode:multiply; }
+    /* Text rhythm */
+    h1,h2{ margin:0 0 .6em; font-weight:800; letter-spacing:.01em; }
+    h1{ font-size: clamp(28px, 5.4vw, 52px); color: color-mix(in oklab, var(--ink) 92%, black 8%); }
+    h2{ font-size: clamp(18px, 3vw, 28px); color: color-mix(in oklab, var(--ink) 86%, black 14%); }
+    p{ font-size: clamp(15px, 2.2vw, 18px); max-width: 72ch; }
 
-    /* Tiny aura on hover to hint interactivity */
-    .sigil::after{
-      content:""; position:absolute; inset:-8px; border-radius:inherit; z-index:-1;
-      background: radial-gradient(60% 60% at 50% 45%, color-mix(in oklab, var(--turquoise) 70%, transparent), transparent 70%);
-      opacity:0; transition:opacity .25s ease;
-    }
-    .sigil:hover::after{ opacity:.45; }
-
-    /* ==========================
-       5) SECTION LAYOUT (negative space)
-       ========================== */
-    main{ max-width:var(--maxw); margin: clamp(12px, 3vw, 24px) auto 10vh; padding: 0 clamp(12px, 3vw, 24px); }
+    /* Sections: only one visible at a time */
     section{ display:none; }
     section.is-current{ display:block; }
 
-    h1,h2{ font-weight:800; letter-spacing:.01em; }
-    h1{ font-size: clamp(28px, 5vw, 48px); color: var(--ink); }
-    h2{ font-size: clamp(18px, 3vw, 28px); color: color-mix(in oklab, var(--ink) 85%, black 15%); }
-    p{ font-size: clamp(15px, 2.2vw, 18px); }
+    /* ==========================
+       4) RUINS (triangular buttons) – top and bottom rails
+       - Each is a real <button> for accessibility; inline SVG triangle with tiny "chips" to feel ancient.
+       ========================== */
+    .ruin-rail{ position:fixed; left:50%; transform:translateX(-50%); z-index:2; display:flex; gap:var(--ruin-gap); pointer-events:auto; }
+    .ruin-rail.top{ top:10px; }
+    .ruin-rail.bottom{ bottom:14px; }
+
+    .ruin{ width:var(--ruin-size); height:var(--ruin-size); background: none; border:none; padding:0; cursor:pointer; position:relative; }
+    .ruin svg{ width:100%; height:100%; display:block; }
+
+    /* Gold base + subtle emboss */
+    .ruin .glyph{ fill: color-mix(in oklab, var(--gold) 92%, white 8%); filter: drop-shadow(0 1px 0 rgba(0,0,0,.14)); }
+
+    /* Glow on hover/focus/active */
+    .ruin:hover .glyph, .ruin:focus-visible .glyph{ filter: drop-shadow(0 0 10px color-mix(in oklab, var(--turquoise) 80%, white 20%)) drop-shadow(0 8px 24px rgba(0,0,0,.18)); }
+    .ruin:active{ transform: translateY(1px); }
+
+    /* Tiny turquoise aura circle under triangle (feels like it’s waking up) */
+    .ruin::after{ content:""; position:absolute; inset:8px; border-radius:999px; background: radial-gradient(60% 60% at 50% 50%, color-mix(in oklab, var(--turquoise) 70%, transparent), transparent 70%); opacity:0; transition:opacity .25s ease; }
+    .ruin:hover::after, .ruin:focus-visible::after{ opacity:.45; }
 
     /* ==========================
-       6) TRANSITIONS (disperse → condense)
-       - Outgoing section: blur + fade + slight scale up (feels like dissolving into mist)
-       - Incoming section: reverse (emerging from mist)
+       5) TRANSITIONS (disperse/condense)
        ========================== */
     .disperse{ animation: disperse var(--transition-ms) var(--transition-ease) both; }
     .condense{ animation: condense var(--transition-ms) var(--transition-ease) both; }
+    @keyframes disperse{ 0%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1);} 60%{ opacity:.0; filter:blur(10px); transform:translateY(6px) scale(1.02);} 100%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025);} }
+    @keyframes condense{ 0%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025);} 40%{ opacity:.6; filter:blur(8px); transform:translateY(2px) scale(1.01);} 100%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1);} }
 
-    @keyframes disperse{
-      0%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1); }
-      60%{ opacity:.0; filter:blur(10px); transform:translateY(6px) scale(1.02); }
-      100%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025); }
-    }
-    @keyframes condense{
-      0%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025); }
-      40%{ opacity:.6; filter:blur(8px); transform:translateY(2px) scale(1.01); }
-      100%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1); }
-    }
-
-    /* ==========================
-       7) OPTIONAL: SVG "mist warp" filter (tiny, on transitions only)
-       - We apply this to a wrapper for < 1 second so text gently ripples.
-       ========================== */
+    /* Optional warp applied only during switch (<1s) */
     .warp-on{ filter: url(#mistWarp); }
 
     /* ==========================
-       8) REDUCE MOTION SUPPORT (OS setting + manual toggle)
+       6) REDUCE MOTION SUPPORT
        ========================== */
-    @media (prefers-reduced-motion: reduce){
-      .mist{ animation: none; }
-      .disperse,.condense{ animation-duration: 0ms; }
-    }
-    .reduce-motion .mist{ animation: none !important; }
-    .reduce-motion .disperse,.reduce-motion .condense{ animation-duration: 0ms !important; }
+    @media (prefers-reduced-motion: reduce){ .mist{ animation:none; } .disperse,.condense{ animation-duration:0ms; } }
+    .reduce-motion .mist{ animation:none !important; }
+    .reduce-motion .disperse,.reduce-motion .condense{ animation-duration:0ms !important; }
 
-    /* Small helper UI (motion toggle) */
-    .toolbar{
-      position:fixed; right:12px; bottom:12px; z-index:2; display:flex; gap:8px;
-    }
-    .toolbtn{
-      font: 600 12px/1 system-ui, sans-serif; letter-spacing:.02em;
-      background: #ffffffb3; backdrop-filter: blur(8px);
-      border:1px solid #00000020; border-radius: 999px; padding:10px 12px; cursor:pointer;
-    }
+    /* Utility: small floating toolbar */
+    .toolbar{ position:fixed; right:12px; bottom:12px; z-index:3; display:flex; gap:8px; }
+    .toolbtn{ font:600 12px/1 system-ui,sans-serif; letter-spacing:.02em; background:#ffffffb3; backdrop-filter:blur(8px); border:1px solid #00000020; border-radius:999px; padding:10px 12px; cursor:pointer; }
   </style>
 </head>
 <body>
-  <!-- ==========================
-       SVG FILTER DEFs (hidden). The feTurbulence animates slightly,
-       giving a "mist ripple" when we toggle .warp-on.
-       ========================== -->
+  <!-- Hidden SVG filters (warp used briefly on transitions) -->
   <svg width="0" height="0" aria-hidden="true">
     <filter id="mistWarp">
       <feTurbulence type="fractalNoise" baseFrequency="0.008 0.010" numOctaves="2" seed="7">
         <animate attributeName="baseFrequency" dur="1.2s" values="0.008 0.010; 0.010 0.012; 0.008 0.010" repeatCount="1"/>
       </feTurbulence>
-      <feDisplacementMap in="SourceGraphic" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+      <feDisplacementMap in="SourceGraphic" scale="6" xChannelSelector="R" yChannelSelector="G" />
       <feGaussianBlur stdDeviation=".2"/>
     </filter>
   </svg>
 
   <div class="page" id="page">
-    <!-- Subtle moving mist background (always on) -->
+    <!-- Edge-leaking turquoise mist (always subtle, never blocking content) -->
     <div class="mist" id="mist" aria-hidden="true"></div>
-    <!-- VIDEO OPTION: Uncomment to use a pre-rendered subtle loop instead of CSS mist
-    <video class="mist-video" autoplay muted loop playsinline aria-hidden="true">
-      <source src="/media/mist.webm" type="video/webm" />
-      <source src="/media/mist.mp4" type="video/mp4" />
-    </video> -->
 
+    <!-- RUIN RAIL – TOP -->
+    <nav class="ruin-rail top" aria-label="Primary navigation (top)">
+      <!-- Each button targets a section by id via data-target -->
+      <button class="ruin" data-target="home" aria-label="Go to Home" title="Home">
+        <!-- Triangle with tiny chips to feel ancient; fill is gold; glow on hover via CSS -->
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <polygon class="glyph" points="50,10 92,90 8,90"/>
+          <!-- chips/cuts: small triangles punched visually (just decorative paths) -->
+          <path d="M30 70 l6 10 l-10 0 z" fill="#f4e9c5" opacity=".35"/>
+          <path d="M70 55 l4 7 l-7 0 z" fill="#f4e9c5" opacity=".28"/>
+        </svg>
+      </button>
+      <button class="ruin" data-target="gallery" aria-label="Go to Gallery" title="Gallery">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <polygon class="glyph" points="50,10 92,90 8,90"/>
+          <path d="M44 62 l6 10 l-10 0 z" fill="#f4e9c5" opacity=".32"/>
+        </svg>
+      </button>
+      <button class="ruin" data-target="about" aria-label="Go to About" title="About">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <polygon class="glyph" points="50,10 92,90 8,90"/>
+          <path d="M60 72 l5 8 l-8 0 z" fill="#f4e9c5" opacity=".30"/>
+        </svg>
+      </button>
+    </nav>
+
+    <!-- RUIN RAIL – BOTTOM (mirrored set; you can add more if you expand sections) -->
+    <nav class="ruin-rail bottom" aria-label="Secondary navigation (bottom)">
+      <button class="ruin" data-target="home" aria-label="Go to Home" title="Home (bottom)">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" style="transform:rotate(180deg)">
+          <polygon class="glyph" points="50,10 92,90 8,90"/>
+          <path d="M36 28 l6 -10 l-10 0 z" fill="#f4e9c5" opacity=".30"/>
+        </svg>
+      </button>
+      <button class="ruin" data-target="gallery" aria-label="Go to Gallery" title="Gallery (bottom)">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" style="transform:rotate(180deg)">
+          <polygon class="glyph" points="50,10 92,90 8,90"/>
+        </svg>
+      </button>
+      <button class="ruin" data-target="about" aria-label="Go to About" title="About (bottom)">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" style="transform:rotate(180deg)">
+          <polygon class="glyph" points="50,10 92,90 8,90"/>
+        </svg>
+      </button>
+    </nav>
+
+    <!-- MAIN CONTENT (central framed panel) -->
     <div class="content" id="content">
-      <header>
-        <div class="brand">
-          <span class="accent">Modern</span> Scroll
-        </div>
-        <!-- Sigil navigation – these buttons switch sections. Accessible labels included. -->
-        <nav class="sigils" aria-label="Site sections">
-          <button class="sigil" data-target="home" aria-label="Go to Home" title="Home">
-            <!-- Minimal art-deco-ish symbol (inline SVG so you can recolor/scale). -->
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fefefe" d="M12 2l2.5 4.5L19 9l-4.5 2.5L12 16l-2.5-4.5L5 9l4.5-2.5L12 2z"/></svg>
-          </button>
-          <button class="sigil" data-target="gallery" aria-label="Go to Gallery" title="Gallery">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="#fefefe"/></svg>
-          </button>
-          <button class="sigil" data-target="about" aria-label="Go to About" title="About">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="3" fill="#fefefe"/></svg>
-          </button>
-        </nav>
-      </header>
+      <div class="panel" id="panel">
+        <main id="main" aria-live="polite">
+          <section id="home" class="is-current">
+            <h1>Modern Scroll</h1>
+            <p>
+              Artsy layout with ancient triangle ruins for navigation. The turquoise mist leaks from the edges
+              and drifts slowly. Click a ruin: content disperses into mist and reforms here.
+            </p>
+          </section>
 
-      <main id="main" aria-live="polite">
-        <!-- SECTION: HOME (visible on load) -->
-        <section id="home" class="is-current">
-          <h1>Quiet luxury, with a hint of magic</h1>
-          <p>
-            This template gives you a calm, negative‑space layout with a soft turquoise mist
-            and gold accents. Try the gold symbols in the header to switch sections — content will
-            momentarily <em>disperse into mist</em> and then <em>reform</em>.
-          </p>
-        </section>
+          <section id="gallery">
+            <h2>Gallery</h2>
+            <p>Put your images here. Keep files ≤ 300 KB each for fast loads. We can add a mist‑fade carousel later.</p>
+          </section>
 
-        <!-- SECTION: GALLERY (example cards) -->
-        <section id="gallery">
-          <h2>Gallery preview</h2>
-          <p>
-            Imagine your images here. On transition, the current content dissolves slightly, and the
-            background mist deepens for a moment for a cinematic feel.
-          </p>
-        </section>
-
-        <!-- SECTION: ABOUT -->
-        <section id="about">
-          <h2>About this style</h2>
-          <p>
-            Colors are easy to change (see <code>:root</code> at the top). You can turn off motion at the bottom-right toggle.
-            The “mist warp” filter is used only during section switches to keep things smooth.
-          </p>
-        </section>
-      </main>
+          <section id="about">
+            <h2>About this style</h2>
+            <p>
+              Colors and motion are controlled at the top of the file in <code>:root</code>. The background uses
+              GPU‑cheap gradients so it stays smooth on phones. Navigation ruins are real buttons for accessibility.
+            </p>
+          </section>
+        </main>
+      </div>
     </div>
 
-    <!-- Small tools (Reduce Motion toggle) -->
+    <!-- Tools: motion toggle (keeps site accessible & professional) -->
     <div class="toolbar">
       <button id="motionToggle" class="toolbtn" aria-pressed="false" aria-label="Toggle reduced motion">Reduce motion</button>
     </div>
@@ -271,87 +238,53 @@
 
   <script>
     // ==========================
-    // 9) INTERACTION LOGIC (no libraries)
-    // - Click a sigil to switch sections with a "disperse → condense" effect.
-    // - Optional gesture: press a sigil, drag UP slightly to advance; drag DOWN to go back.
-    // - We also toggle a tiny SVG "mist warp" on the content wrapper for <1s.
+    // INTERACTION LOGIC – Ruins switch sections with disperse/condense.
     // ==========================
-
-    const page = document.getElementById('page');
     const contentWrap = document.getElementById('content');
+    const panel = document.getElementById('panel');
     const mist = document.getElementById('mist');
     const sections = Array.from(document.querySelectorAll('main > section'));
 
-    // Helper: return current visible section
-    function getCurrentSection(){ return sections.find(s => s.classList.contains('is-current')); }
+    function currentSection(){ return sections.find(s => s.classList.contains('is-current')); }
 
-    // Helper: switch to target section id
     function goToSection(id){
-      const current = getCurrentSection();
-      const next = document.getElementById(id);
-      if(!next || next === current) return;
+      const from = currentSection();
+      const to = document.getElementById(id);
+      if(!to || to===from) return;
 
-      // 1) Animate current out (disperse)
-      current.classList.remove('is-current');
-      current.classList.add('disperse');
-
-      // 2) Subtle drama: intensify mist + add warp filter ONCE
+      // outgoing
+      from.classList.remove('is-current');
+      from.classList.add('disperse');
       mist.classList.add('is-strong');
-      contentWrap.classList.add('warp-on');
+      panel.classList.add('warp-on');
 
-      // 3) After the out animation, show the new section and animate in
-      setTimeout(() =>{
-        current.classList.remove('disperse');
-        next.classList.add('is-current','condense');
-
-        // 4) Wind down mist and warp soon after
+      // after animation length, switch
+      const dur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--transition-ms'));
+      setTimeout(()=>{
+        from.classList.remove('disperse');
+        to.classList.add('is-current','condense');
         setTimeout(()=>{
-          next.classList.remove('condense');
+          to.classList.remove('condense');
           mist.classList.remove('is-strong');
-          contentWrap.classList.remove('warp-on');
-        }, 420); // shorter than full duration so it feels snappy
-      }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--transition-ms')));
+          panel.classList.remove('warp-on');
+        }, 420);
+      }, dur);
     }
 
-    // Wire up click on sigils
-    document.querySelectorAll('.sigil').forEach(btn =>{
-      btn.addEventListener('click', () => goToSection(btn.dataset.target));
+    document.querySelectorAll('.ruin').forEach(btn=>{
+      btn.addEventListener('click', ()=> goToSection(btn.dataset.target));
 
-      // Optional gesture (press + drag up/down ≈ change)
-      let startY = null, moved = false;
-      btn.addEventListener('pointerdown', e =>{ startY = e.clientY; moved=false; btn.setPointerCapture(e.pointerId); });
-      btn.addEventListener('pointermove', e =>{
-        if(startY === null) return;
-        const dy = e.clientY - startY;
-        // If user drags upward by 48px, we interpret as "next"; downward as "previous".
-        if(dy < -48 && !moved){
-          moved = true; cycle(+1);
-        } else if(dy > 48 && !moved){
-          moved = true; cycle(-1);
-        }
-      });
-      btn.addEventListener('pointerup', ()=>{ startY = null; moved=false; });
-      btn.addEventListener('pointercancel', ()=>{ startY = null; moved=false; });
+      // simple keyboard support
+      btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); goToSection(btn.dataset.target); }});
     });
 
-    // Cycle helper for gesture: move between sections in array order
-    function cycle(direction){
-      const current = getCurrentSection();
-      const i = sections.indexOf(current);
-      const nextIndex = (i + direction + sections.length) % sections.length;
-      goToSection(sections[nextIndex].id);
-    }
-
-    // Reduce Motion toggle (for folks sensitive to motion)
+    // Reduce Motion toggle
     const motionToggle = document.getElementById('motionToggle');
-    motionToggle.addEventListener('click', () =>{
-      const isOn = document.body.classList.toggle('reduce-motion');
-      motionToggle.setAttribute('aria-pressed', String(isOn));
-      motionToggle.textContent = isOn ? 'Enable motion' : 'Reduce motion';
+    motionToggle.addEventListener('click', ()=>{
+      const on = document.body.classList.toggle('reduce-motion');
+      motionToggle.setAttribute('aria-pressed', String(on));
+      motionToggle.textContent = on ? 'Enable motion' : 'Reduce motion';
     });
-
-    // Tip: If you want the Gallery to auto-advance images with the same mist-y effect,
-    // you can reuse goToSection-like logic for elements inside #gallery.
   </script>
 </body>
 </html>
