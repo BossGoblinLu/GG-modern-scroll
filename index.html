@@ -1,0 +1,357 @@
+<!--
+  Modern Scroll – Single-file base template (HTML+CSS+JS)
+  Goal: subtle moving mist background + elegant gold/turquoise theme + negative space
+        + "sigil" navigation (+ optional gesture) + smooth, quick transitions.
+
+  ✱ How to use: Save this whole file as index.html and deploy.
+  Everything is labeled in plain language so you can find/adjust things quickly.
+
+  Accessibility:
+  - Screen-reader friendly nav (buttons/links still behave like buttons).
+  - Respects OS "Reduce Motion" setting + includes a manual toggle.
+
+  Performance guardrails:
+  - Animations use transform/opacity when possible (fast on GPU).
+  - SVG filter for a tiny "mist warp" runs only during transitions (<1s).
+  - Background mist is super light (CSS gradients). You can switch to a video loop easily (search for VIDEO OPTION below).
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modern Scroll – Mist Template</title>
+
+  <style>
+    /* ==========================
+       0) BRAND COLORS + KNOBS
+       Change these to tune the vibe site‑wide.
+       ========================== */
+    :root{
+      --paper: #f5f2e8;          /* parchment background */
+      --turquoise: #009ca6;      /* glowing turquoise accent */
+      --gold: #c9a646;           /* warm metallic gold */
+      --ink: rgba(0,0,0,.8);     /* dark text (not pure black) */
+      --maxw: 1000px;            /* max text width for comfy reading */
+
+      /* motion + intensity knobs */
+      --mist-opacity: .18;       /* default mist visibility (0–.35) */
+      --mist-blur: 28px;         /* softness of mist */
+      --mist-speed-1: 28s;       /* slow drift speed */
+      --mist-speed-2: 37s;       /* second parallax speed */
+
+      --transition-ms: 850ms;    /* length of content transitions */
+      --transition-ease: cubic-bezier(.2,.7,.2,1);
+      --sigil-size: 52px;        /* size of the gold symbol buttons */
+    }
+
+    /* ==========================
+       1) PAGE LAYOUT BASICS
+       ========================== */
+    html,body{height:100%;}
+    body{
+      margin:0;
+      background: var(--paper);
+      color: var(--ink);
+      font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+    }
+
+    .page{ position:relative; min-height:100dvh; overflow-x:hidden; }
+
+    /* ==========================
+       2) BACKGROUND MIST (always moving, super subtle)
+       - CSS gradients drift very slowly; cheap & smooth.
+       - We keep this behind everything using z-index.
+       ========================== */
+    .mist{
+      position:absolute; inset:-20vmax; z-index:0; pointer-events:none;
+      /* Three giant radial gradients in turquoise with transparency */
+      background:
+        radial-gradient(120vmax 90vmax at 10% 5%, rgba(0,156,166,.10), transparent 60%),
+        radial-gradient(90vmax 70vmax at 95% 85%, rgba(0,156,166,.06), transparent 60%),
+        radial-gradient(110vmax 80vmax at 0% 100%, rgba(0,156,166,.05), transparent 60%);
+      filter: blur(var(--mist-blur));
+      opacity: var(--mist-opacity);
+      transform: translateZ(0); /* hint GPU */
+      animation: mistDrift1 var(--mist-speed-1) linear infinite,
+                 mistDrift2 var(--mist-speed-2) linear infinite reverse;
+    }
+    @keyframes mistDrift1{ 0%{ transform: translate3d(0,0,0) scale(1.02);} 50%{ transform: translate3d(2vw,-1vh,0) scale(1.03);} 100%{ transform: translate3d(0,0,0) scale(1.02);} }
+    @keyframes mistDrift2{ 0%{ background-position: 0 0, 0 0, 0 0;} 100%{ background-position: 2vw -1vh, -2vw 1vh, 1vw 2vh; } }
+
+    /* During transitions we gently increase mist presence for drama */
+    .mist.is-strong{ opacity: calc(var(--mist-opacity) + .10); filter: blur(calc(var(--mist-blur) + 6px)); }
+
+    /* ==========================
+       2b) OPTIONAL VIDEO OPTION (commented out)
+       - If you prefer a tiny seamless video loop instead of CSS, uncomment both the HTML <video> and CSS below.
+       - Keep video file small (<1MB), 720p, subtle.
+       ========================== */
+    /*
+    .mist-video{ position:absolute; inset:0; object-fit:cover; z-index:0; opacity:.18; filter:blur(12px); }
+    */
+
+    /* ==========================
+       3) CONTENT WRAPPER
+       - z-index above the mist so content sits on top.
+       ========================== */
+    .content{ position:relative; z-index:1; }
+
+    header{ display:flex; align-items:center; justify-content:space-between; gap:1rem; padding: clamp(16px, 3vw, 24px); max-width:var(--maxw); margin:0 auto; }
+
+    .brand{
+      display:flex; align-items:baseline; gap:.6rem;
+      font-weight:700; letter-spacing:.02em; color: var(--ink);
+    }
+    .brand .accent{ color: var(--gold); font-weight:800; }
+
+    /* ==========================
+       4) SIGIL NAVIGATION (gold symbols)
+       - Buttons are real <button>s for accessibility.
+       - We use a simple SVG shape to feel "ornamental" but minimal.
+       ========================== */
+    .sigils{ display:flex; gap:.6rem; }
+    .sigil{
+      width: var(--sigil-size); height: var(--sigil-size);
+      border-radius: 999px; border: 1px solid color-mix(in oklab, var(--gold) 90%, black 10%);
+      background: radial-gradient(120% 160% at 30% 20%, color-mix(in oklab, var(--gold) 65%, white 35%), color-mix(in oklab, var(--gold) 95%, black 5%));
+      color:#2b2b2b; display:grid; place-items:center; cursor:pointer; position:relative; isolation:isolate;
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+    .sigil:hover{ transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+    .sigil:active{ transform: translateY(0) scale(.98); }
+    .sigil svg{ width:56%; height:56%; opacity:.92; mix-blend-mode:multiply; }
+
+    /* Tiny aura on hover to hint interactivity */
+    .sigil::after{
+      content:""; position:absolute; inset:-8px; border-radius:inherit; z-index:-1;
+      background: radial-gradient(60% 60% at 50% 45%, color-mix(in oklab, var(--turquoise) 70%, transparent), transparent 70%);
+      opacity:0; transition:opacity .25s ease;
+    }
+    .sigil:hover::after{ opacity:.45; }
+
+    /* ==========================
+       5) SECTION LAYOUT (negative space)
+       ========================== */
+    main{ max-width:var(--maxw); margin: clamp(12px, 3vw, 24px) auto 10vh; padding: 0 clamp(12px, 3vw, 24px); }
+    section{ display:none; }
+    section.is-current{ display:block; }
+
+    h1,h2{ font-weight:800; letter-spacing:.01em; }
+    h1{ font-size: clamp(28px, 5vw, 48px); color: var(--ink); }
+    h2{ font-size: clamp(18px, 3vw, 28px); color: color-mix(in oklab, var(--ink) 85%, black 15%); }
+    p{ font-size: clamp(15px, 2.2vw, 18px); }
+
+    /* ==========================
+       6) TRANSITIONS (disperse → condense)
+       - Outgoing section: blur + fade + slight scale up (feels like dissolving into mist)
+       - Incoming section: reverse (emerging from mist)
+       ========================== */
+    .disperse{ animation: disperse var(--transition-ms) var(--transition-ease) both; }
+    .condense{ animation: condense var(--transition-ms) var(--transition-ease) both; }
+
+    @keyframes disperse{
+      0%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1); }
+      60%{ opacity:.0; filter:blur(10px); transform:translateY(6px) scale(1.02); }
+      100%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025); }
+    }
+    @keyframes condense{
+      0%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025); }
+      40%{ opacity:.6; filter:blur(8px); transform:translateY(2px) scale(1.01); }
+      100%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1); }
+    }
+
+    /* ==========================
+       7) OPTIONAL: SVG "mist warp" filter (tiny, on transitions only)
+       - We apply this to a wrapper for < 1 second so text gently ripples.
+       ========================== */
+    .warp-on{ filter: url(#mistWarp); }
+
+    /* ==========================
+       8) REDUCE MOTION SUPPORT (OS setting + manual toggle)
+       ========================== */
+    @media (prefers-reduced-motion: reduce){
+      .mist{ animation: none; }
+      .disperse,.condense{ animation-duration: 0ms; }
+    }
+    .reduce-motion .mist{ animation: none !important; }
+    .reduce-motion .disperse,.reduce-motion .condense{ animation-duration: 0ms !important; }
+
+    /* Small helper UI (motion toggle) */
+    .toolbar{
+      position:fixed; right:12px; bottom:12px; z-index:2; display:flex; gap:8px;
+    }
+    .toolbtn{
+      font: 600 12px/1 system-ui, sans-serif; letter-spacing:.02em;
+      background: #ffffffb3; backdrop-filter: blur(8px);
+      border:1px solid #00000020; border-radius: 999px; padding:10px 12px; cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <!-- ==========================
+       SVG FILTER DEFs (hidden). The feTurbulence animates slightly,
+       giving a "mist ripple" when we toggle .warp-on.
+       ========================== -->
+  <svg width="0" height="0" aria-hidden="true">
+    <filter id="mistWarp">
+      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.010" numOctaves="2" seed="7">
+        <animate attributeName="baseFrequency" dur="1.2s" values="0.008 0.010; 0.010 0.012; 0.008 0.010" repeatCount="1"/>
+      </feTurbulence>
+      <feDisplacementMap in="SourceGraphic" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+      <feGaussianBlur stdDeviation=".2"/>
+    </filter>
+  </svg>
+
+  <div class="page" id="page">
+    <!-- Subtle moving mist background (always on) -->
+    <div class="mist" id="mist" aria-hidden="true"></div>
+    <!-- VIDEO OPTION: Uncomment to use a pre-rendered subtle loop instead of CSS mist
+    <video class="mist-video" autoplay muted loop playsinline aria-hidden="true">
+      <source src="/media/mist.webm" type="video/webm" />
+      <source src="/media/mist.mp4" type="video/mp4" />
+    </video> -->
+
+    <div class="content" id="content">
+      <header>
+        <div class="brand">
+          <span class="accent">Modern</span> Scroll
+        </div>
+        <!-- Sigil navigation – these buttons switch sections. Accessible labels included. -->
+        <nav class="sigils" aria-label="Site sections">
+          <button class="sigil" data-target="home" aria-label="Go to Home" title="Home">
+            <!-- Minimal art-deco-ish symbol (inline SVG so you can recolor/scale). -->
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#fefefe" d="M12 2l2.5 4.5L19 9l-4.5 2.5L12 16l-2.5-4.5L5 9l4.5-2.5L12 2z"/></svg>
+          </button>
+          <button class="sigil" data-target="gallery" aria-label="Go to Gallery" title="Gallery">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="#fefefe"/></svg>
+          </button>
+          <button class="sigil" data-target="about" aria-label="Go to About" title="About">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="3" fill="#fefefe"/></svg>
+          </button>
+        </nav>
+      </header>
+
+      <main id="main" aria-live="polite">
+        <!-- SECTION: HOME (visible on load) -->
+        <section id="home" class="is-current">
+          <h1>Quiet luxury, with a hint of magic</h1>
+          <p>
+            This template gives you a calm, negative‑space layout with a soft turquoise mist
+            and gold accents. Try the gold symbols in the header to switch sections — content will
+            momentarily <em>disperse into mist</em> and then <em>reform</em>.
+          </p>
+        </section>
+
+        <!-- SECTION: GALLERY (example cards) -->
+        <section id="gallery">
+          <h2>Gallery preview</h2>
+          <p>
+            Imagine your images here. On transition, the current content dissolves slightly, and the
+            background mist deepens for a moment for a cinematic feel.
+          </p>
+        </section>
+
+        <!-- SECTION: ABOUT -->
+        <section id="about">
+          <h2>About this style</h2>
+          <p>
+            Colors are easy to change (see <code>:root</code> at the top). You can turn off motion at the bottom-right toggle.
+            The “mist warp” filter is used only during section switches to keep things smooth.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <!-- Small tools (Reduce Motion toggle) -->
+    <div class="toolbar">
+      <button id="motionToggle" class="toolbtn" aria-pressed="false" aria-label="Toggle reduced motion">Reduce motion</button>
+    </div>
+  </div>
+
+  <script>
+    // ==========================
+    // 9) INTERACTION LOGIC (no libraries)
+    // - Click a sigil to switch sections with a "disperse → condense" effect.
+    // - Optional gesture: press a sigil, drag UP slightly to advance; drag DOWN to go back.
+    // - We also toggle a tiny SVG "mist warp" on the content wrapper for <1s.
+    // ==========================
+
+    const page = document.getElementById('page');
+    const contentWrap = document.getElementById('content');
+    const mist = document.getElementById('mist');
+    const sections = Array.from(document.querySelectorAll('main > section'));
+
+    // Helper: return current visible section
+    function getCurrentSection(){ return sections.find(s => s.classList.contains('is-current')); }
+
+    // Helper: switch to target section id
+    function goToSection(id){
+      const current = getCurrentSection();
+      const next = document.getElementById(id);
+      if(!next || next === current) return;
+
+      // 1) Animate current out (disperse)
+      current.classList.remove('is-current');
+      current.classList.add('disperse');
+
+      // 2) Subtle drama: intensify mist + add warp filter ONCE
+      mist.classList.add('is-strong');
+      contentWrap.classList.add('warp-on');
+
+      // 3) After the out animation, show the new section and animate in
+      setTimeout(() =>{
+        current.classList.remove('disperse');
+        next.classList.add('is-current','condense');
+
+        // 4) Wind down mist and warp soon after
+        setTimeout(()=>{
+          next.classList.remove('condense');
+          mist.classList.remove('is-strong');
+          contentWrap.classList.remove('warp-on');
+        }, 420); // shorter than full duration so it feels snappy
+      }, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--transition-ms')));
+    }
+
+    // Wire up click on sigils
+    document.querySelectorAll('.sigil').forEach(btn =>{
+      btn.addEventListener('click', () => goToSection(btn.dataset.target));
+
+      // Optional gesture (press + drag up/down ≈ change)
+      let startY = null, moved = false;
+      btn.addEventListener('pointerdown', e =>{ startY = e.clientY; moved=false; btn.setPointerCapture(e.pointerId); });
+      btn.addEventListener('pointermove', e =>{
+        if(startY === null) return;
+        const dy = e.clientY - startY;
+        // If user drags upward by 48px, we interpret as "next"; downward as "previous".
+        if(dy < -48 && !moved){
+          moved = true; cycle(+1);
+        } else if(dy > 48 && !moved){
+          moved = true; cycle(-1);
+        }
+      });
+      btn.addEventListener('pointerup', ()=>{ startY = null; moved=false; });
+      btn.addEventListener('pointercancel', ()=>{ startY = null; moved=false; });
+    });
+
+    // Cycle helper for gesture: move between sections in array order
+    function cycle(direction){
+      const current = getCurrentSection();
+      const i = sections.indexOf(current);
+      const nextIndex = (i + direction + sections.length) % sections.length;
+      goToSection(sections[nextIndex].id);
+    }
+
+    // Reduce Motion toggle (for folks sensitive to motion)
+    const motionToggle = document.getElementById('motionToggle');
+    motionToggle.addEventListener('click', () =>{
+      const isOn = document.body.classList.toggle('reduce-motion');
+      motionToggle.setAttribute('aria-pressed', String(isOn));
+      motionToggle.textContent = isOn ? 'Enable motion' : 'Reduce motion';
+    });
+
+    // Tip: If you want the Gallery to auto-advance images with the same mist-y effect,
+    // you can reuse goToSection-like logic for elements inside #gallery.
+  </script>
+</body>
+</html>
