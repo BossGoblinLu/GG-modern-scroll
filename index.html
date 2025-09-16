@@ -1,290 +1,242 @@
 <!--
-  Modern Scroll – "Ruin Triangles" Layout (single-file, copy‑paste)
-  Purpose: Artsy layout with ancient triangular ruins around the border (they glow on hover/click)
-           + central content panel that disperses into mist and reforms on navigation.
+  Modern Scroll – "Ruin Triangles" (PROFESSIONAL, NO ANIMATED BACKGROUND)
+  Purpose: Artsy layout with triangle ruins, central panel, and a clean whimsical menu.
+           Background uses a ROTATING SET OF STATIC IMAGES (cross‑fade only when swapping)
+           — no constant animated mist. Everything is tuned for smoothness.
 
-  HOW TO USE:
-  1) Save this file as index.html in your GitHub repo.
-  2) Deploy with Vercel (no build step). Connect your GoDaddy domain as previously instructed.
+  WHAT CHANGED (non-optional based on your request):
+  ✓ Removed animated gradient/video backgrounds entirely.
+  ✓ Background is now a controllable image rotator (cross‑fades quickly, then stays still).
+  ✓ Ruin hover effects are transform/opacity only (instant).
+  ✓ Menu is a soft, rounded panel with gold borders and smooth open/close.
+  ✓ Transitions use opacity + slight scale only.
 
-  DESIGN CHOICES (professional + smooth):
-  - Background mist leaks in from edges using large radial gradients (GPU‑cheap) that drift slowly.
-  - Ruins are inline SVG triangles (accessible <button>s). Hover/click adds turquoise glow.
-  - Transitions rely on opacity/blur transforms (fast). Tiny SVG warp runs < 1s for atmosphere.
-  - Motion can be disabled via Reduce Motion toggle (keeps site accessible).
+  REQUIRED ACTION (images):
+  1) Put background images in /bg/ and list them in BG_IMAGES below.
+     - Use 1920×1200 (or 1920×1080) JPG/WebP, ≤ 300–400 KB each.
+     - Name them bg-01.jpg, bg-02.jpg, ...
+  2) Update the array BG_IMAGES if filenames differ.
+
+  Rotation behavior:
+  - On load we show the first image immediately.
+  - Every 15s we cross‑fade to the next image (500ms), then sit still. This is very light.
+  - If you truly want zero rotation, set ROTATE=false below.
 -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Modern Scroll – Ruin Triangles</title>
-
+  <title>Modern Scroll – Ruins + Scroll Panel</title>
   <style>
     /* =====================================
-       0) BRAND + TUNING KNOBS (edit here)
+       0) BRAND + TUNING KNOBS
        ===================================== */
     :root{
       --paper: #f5f2e8;          /* parchment */
-      --turquoise: #009ca6;      /* mist + glow */
-      --gold: #c9a646;           /* ruins + accents */
-      --ink: rgba(20,18,16,.92); /* readable text */
-      --maxw: 980px;             /* content width */
+      --turquoise: #009ca6;      /* accent */
+      --gold: #c9a646;           /* ruins + borders */
+      --ink: rgba(20,18,16,.92);
+      --maxw: 980px;
 
-      /* Mist behavior */
-      --mist-opacity: .22;       /* edge mist visibility (.12–.30 good) */
-      --mist-blur: 34px;         /* softness */
-      --mist-speed-1: 30s;       /* drift speeds */
-      --mist-speed-2: 42s;
-
-      /* Transitions */
-      --transition-ms: 900ms;
+      --transition-ms: 720ms;    /* section transition length */
       --transition-ease: cubic-bezier(.2,.7,.2,1);
-
-      /* Ruins */
       --ruin-size: 54px;         /* triangle size */
-      --ruin-gap: 12px;          /* spacing between triangles */
+      --ruin-gap: 12px;          /* ruin spacing */
+      --menu-radius: 22px;       /* soft menu corners */
     }
 
-    /* ==========================
-       1) PAGE BASICS
-       ========================== */
     html,body{height:100%;}
     body{ margin:0; background:var(--paper); color:var(--ink); font:16px/1.6 ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; }
     .page{ position:relative; min-height:100dvh; overflow:hidden; }
 
-    /* ==========================
-       2) EDGE MIST BACKGROUND (leaks from corners)
-       - uses big radial gradients at corners/edges; slow background-position drift
-       ========================== */
-    .mist{ position:absolute; inset:-25vmax; z-index:0; pointer-events:none; opacity:var(--mist-opacity); filter:blur(var(--mist-blur)); transform:translateZ(0);
-      background:
-        /* top-left turquoise leak */
-        radial-gradient(120vmax 90vmax at -10% -10%, rgba(0,156,166,.18), transparent 60%),
-        /* bottom-right turquoise leak */
-        radial-gradient(120vmax 90vmax at 110% 110%, rgba(0,156,166,.15), transparent 60%),
-        /* subtle side swells */
-        radial-gradient(80vmax 70vmax at 0% 50%, rgba(0,156,166,.08), transparent 60%),
-        radial-gradient(80vmax 70vmax at 100% 50%, rgba(0,156,166,.08), transparent 60%);
-      animation: driftA var(--mist-speed-1) linear infinite, driftB var(--mist-speed-2) linear infinite reverse;
-    }
-    @keyframes driftA{ 0%{ transform:translate3d(0,0,0) scale(1.03);} 50%{ transform:translate3d(1.6vw,-1.2vh,0) scale(1.035);} 100%{ transform:translate3d(0,0,0) scale(1.03);} }
-    @keyframes driftB{ 0%{ background-position: 0 0, 0 0, 0 0, 0 0;} 100%{ background-position: 2vw -1vh, -2vw 1vh, 1vw 0, -1vw 0; } }
-    .mist.is-strong{ opacity: calc(var(--mist-opacity) + .10); filter:blur(calc(var(--mist-blur) + 6px)); }
+    /* =====================================
+       1) BACKGROUND – ROTATING STATIC IMAGES
+       - Each image is absolutely positioned and covers the viewport.
+       - We fade between them for 500ms, then no motion.
+       ===================================== */
+    .bg{ position:absolute; inset:0; z-index:0; pointer-events:none; background: var(--paper); }
+    .bg img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition: opacity .5s ease; }
+    .bg img.is-active{ opacity:1; }
 
-    /* ==========================
-       3) CENTRAL CONTENT PANEL (framed scroll)
-       - large white/cream panel with faint inner gradient; heavy negative space
-       ========================== */
+    /* =====================================
+       2) CENTRAL CONTENT PANEL (framed scroll)
+       ===================================== */
     .content{ position:relative; z-index:1; display:grid; place-items:center; padding: min(6vw, 48px); }
     .panel{ width:min(92vw, var(--maxw)); min-height: clamp(420px, 70vh, 780px); box-sizing:border-box;
-      background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.85));
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
       border: 1px solid color-mix(in oklab, var(--gold) 55%, black 8%);
-      outline: 16px solid rgba(255,255,255,.18); /* museum mat feel */
-      box-shadow: 0 40px 140px rgba(0,0,0,.10);
+      outline: 14px solid rgba(255,255,255,.18);
+      box-shadow: 0 40px 120px rgba(0,0,0,.10);
       padding: clamp(18px, 3.6vw, 36px);
+      will-change: transform, opacity;
     }
 
-    /* Text rhythm */
     h1,h2{ margin:0 0 .6em; font-weight:800; letter-spacing:.01em; }
-    h1{ font-size: clamp(28px, 5.4vw, 52px); color: color-mix(in oklab, var(--ink) 92%, black 8%); }
-    h2{ font-size: clamp(18px, 3vw, 28px); color: color-mix(in oklab, var(--ink) 86%, black 14%); }
+    h1{ font-size: clamp(28px, 5.2vw, 50px); color: color-mix(in oklab, var(--ink) 92%, black 8%);} 
+    h2{ font-size: clamp(18px, 3vw, 28px); color: color-mix(in oklab, var(--ink) 86%, black 14%);} 
     p{ font-size: clamp(15px, 2.2vw, 18px); max-width: 72ch; }
 
-    /* Sections: only one visible at a time */
     section{ display:none; }
     section.is-current{ display:block; }
 
-    /* ==========================
-       4) RUINS (triangular buttons) – top and bottom rails
-       - Each is a real <button> for accessibility; inline SVG triangle with tiny "chips" to feel ancient.
-       ========================== */
-    .ruin-rail{ position:fixed; left:50%; transform:translateX(-50%); z-index:2; display:flex; gap:var(--ruin-gap); pointer-events:auto; }
-    .ruin-rail.top{ top:10px; }
-    .ruin-rail.bottom{ bottom:14px; }
+    /* =====================================
+       3) RUINS – triangular buttons (top & bottom rails)
+       - Pure CSS triangles + soft turquoise aura on hover/focus.
+       ===================================== */
+    .ruin-rail{ position:fixed; left:50%; transform:translateX(-50%); z-index:2; display:flex; gap:var(--ruin-gap); }
+    .ruin-rail.top{ top:12px; }
+    .ruin-rail.bottom{ bottom:16px; }
 
-    .ruin{ width:var(--ruin-size); height:var(--ruin-size); background: none; border:none; padding:0; cursor:pointer; position:relative; }
-    .ruin svg{ width:100%; height:100%; display:block; }
-
-    /* Gold base + subtle emboss */
-    .ruin .glyph{ fill: color-mix(in oklab, var(--gold) 92%, white 8%); filter: drop-shadow(0 1px 0 rgba(0,0,0,.14)); }
-
-    /* Glow on hover/focus/active */
-    .ruin:hover .glyph, .ruin:focus-visible .glyph{ filter: drop-shadow(0 0 10px color-mix(in oklab, var(--turquoise) 80%, white 20%)) drop-shadow(0 8px 24px rgba(0,0,0,.18)); }
+    .ruin{ width:var(--ruin-size); height:var(--ruin-size); background:none; border:none; padding:0; cursor:pointer; position:relative; will-change:transform; }
     .ruin:active{ transform: translateY(1px); }
 
-    /* Tiny turquoise aura circle under triangle (feels like it’s waking up) */
-    .ruin::after{ content:""; position:absolute; inset:8px; border-radius:999px; background: radial-gradient(60% 60% at 50% 50%, color-mix(in oklab, var(--turquoise) 70%, transparent), transparent 70%); opacity:0; transition:opacity .25s ease; }
-    .ruin:hover::after, .ruin:focus-visible::after{ opacity:.45; }
+    .ruin .tri{ width:0; height:0; border-left: calc(var(--ruin-size)/2) solid transparent; border-right: calc(var(--ruin-size)/2) solid transparent; border-bottom: var(--ruin-size) solid color-mix(in oklab, var(--gold) 92%, white 8%); }
+    .ruin::after{ content:""; position:absolute; inset:6px; border-radius:999px; background: radial-gradient(60% 60% at 50% 50%, color-mix(in oklab, var(--turquoise) 72%, transparent), transparent 70%); opacity:0; transform:scale(.92); transition: opacity .18s ease, transform .18s ease; pointer-events:none; }
+    .ruin:hover::after, .ruin:focus-visible::after{ opacity:.42; transform:scale(1); }
 
-    /* ==========================
-       5) TRANSITIONS (disperse/condense)
-       ========================== */
+    /* =====================================
+       4) MENU – whimsical/modern, soft edges
+       - Opens from a pill button. Clean border, subtle shadow.
+       ===================================== */
+    .menu-toggle{ position:fixed; right:14px; top:14px; z-index:3; background:#ffffffbf; border:1px solid #00000020; backdrop-filter: blur(8px); border-radius:999px; padding:10px 14px; font:600 14px/1 system-ui,sans-serif; cursor:pointer; }
+    .menu-panel{ position:fixed; right:14px; top:58px; z-index:3; width:min(92vw, 340px); background:#fffffff2; border:1px solid color-mix(in oklab, var(--gold) 55%, black 8%); border-radius: var(--menu-radius); box-shadow: 0 30px 80px rgba(0,0,0,.15); padding:16px; opacity:0; transform: translateY(-6px) scale(.98); pointer-events:none; transition: opacity .2s ease, transform .2s ease; }
+    .menu-panel.is-open{ opacity:1; transform: translateY(0) scale(1); pointer-events:auto; }
+    .menu-title{ font-weight:800; letter-spacing:.02em; margin:4px 0 10px; color: color-mix(in oklab, var(--ink) 90%, black 10%); }
+    .menu-list{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+    .menu-link{ display:flex; align-items:center; gap:10px; padding:12px 12px; border-radius: 16px; border:1px solid #00000010; text-decoration:none; color: var(--ink); background:#ffffff; transition: transform .16s ease, box-shadow .16s ease; }
+    .menu-link:hover{ transform: translateY(-1px); box-shadow: 0 10px 24px rgba(0,0,0,.08); }
+    .menu-glyph{ width:20px; height:20px; border-radius:6px; background: radial-gradient(120% 160% at 30% 20%, color-mix(in oklab, var(--gold) 65%, white 35%), color-mix(in oklab, var(--gold) 95%, black 5%)); }
+
+    /* =====================================
+       5) TRANSITIONS (section swap)
+       ===================================== */
     .disperse{ animation: disperse var(--transition-ms) var(--transition-ease) both; }
     .condense{ animation: condense var(--transition-ms) var(--transition-ease) both; }
-    @keyframes disperse{ 0%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1);} 60%{ opacity:.0; filter:blur(10px); transform:translateY(6px) scale(1.02);} 100%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025);} }
-    @keyframes condense{ 0%{ opacity:0; filter:blur(14px); transform:translateY(8px) scale(1.025);} 40%{ opacity:.6; filter:blur(8px); transform:translateY(2px) scale(1.01);} 100%{ opacity:1; filter:blur(0px); transform:translateY(0) scale(1);} }
+    @keyframes disperse{ 0%{ opacity:1; transform:translateY(0) scale(1);} 60%{ opacity:0; transform:translateY(8px) scale(1.02);} 100%{ opacity:0; transform:translateY(10px) scale(1.024);} }
+    @keyframes condense{ 0%{ opacity:0; transform:translateY(10px) scale(1.024);} 40%{ opacity:.6; transform:translateY(2px) scale(1.01);} 100%{ opacity:1; transform:translateY(0) scale(1);} }
 
-    /* Optional warp applied only during switch (<1s) */
-    .warp-on{ filter: url(#mistWarp); }
-
-    /* ==========================
+    /* =====================================
        6) REDUCE MOTION SUPPORT
-       ========================== */
-    @media (prefers-reduced-motion: reduce){ .mist{ animation:none; } .disperse,.condense{ animation-duration:0ms; } }
-    .reduce-motion .mist{ animation:none !important; }
+       ===================================== */
+    @media (prefers-reduced-motion: reduce){ .bg img{ transition:none; } .disperse,.condense{ animation-duration:0ms; } }
+    .reduce-motion .bg img{ transition:none !important; }
     .reduce-motion .disperse,.reduce-motion .condense{ animation-duration:0ms !important; }
-
-    /* Utility: small floating toolbar */
-    .toolbar{ position:fixed; right:12px; bottom:12px; z-index:3; display:flex; gap:8px; }
-    .toolbtn{ font:600 12px/1 system-ui,sans-serif; letter-spacing:.02em; background:#ffffffb3; backdrop-filter:blur(8px); border:1px solid #00000020; border-radius:999px; padding:10px 12px; cursor:pointer; }
   </style>
 </head>
 <body>
-  <!-- Hidden SVG filters (warp used briefly on transitions) -->
-  <svg width="0" height="0" aria-hidden="true">
-    <filter id="mistWarp">
-      <feTurbulence type="fractalNoise" baseFrequency="0.008 0.010" numOctaves="2" seed="7">
-        <animate attributeName="baseFrequency" dur="1.2s" values="0.008 0.010; 0.010 0.012; 0.008 0.010" repeatCount="1"/>
-      </feTurbulence>
-      <feDisplacementMap in="SourceGraphic" scale="6" xChannelSelector="R" yChannelSelector="G" />
-      <feGaussianBlur stdDeviation=".2"/>
-    </filter>
-  </svg>
-
   <div class="page" id="page">
-    <!-- Edge-leaking turquoise mist (always subtle, never blocking content) -->
-    <div class="mist" id="mist" aria-hidden="true"></div>
+    <!-- BACKGROUND LAYER (rotating images). Replace filenames in JS below if needed. -->
+    <div class="bg" id="bg" aria-hidden="true">
+      <!-- Images will be inserted by JS so we can preload & tag active. -->
+    </div>
 
-    <!-- RUIN RAIL – TOP -->
+    <!-- RUINS TOP -->
     <nav class="ruin-rail top" aria-label="Primary navigation (top)">
-      <!-- Each button targets a section by id via data-target -->
-      <button class="ruin" data-target="home" aria-label="Go to Home" title="Home">
-        <!-- Triangle with tiny chips to feel ancient; fill is gold; glow on hover via CSS -->
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-          <polygon class="glyph" points="50,10 92,90 8,90"/>
-          <!-- chips/cuts: small triangles punched visually (just decorative paths) -->
-          <path d="M30 70 l6 10 l-10 0 z" fill="#f4e9c5" opacity=".35"/>
-          <path d="M70 55 l4 7 l-7 0 z" fill="#f4e9c5" opacity=".28"/>
-        </svg>
-      </button>
-      <button class="ruin" data-target="gallery" aria-label="Go to Gallery" title="Gallery">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-          <polygon class="glyph" points="50,10 92,90 8,90"/>
-          <path d="M44 62 l6 10 l-10 0 z" fill="#f4e9c5" opacity=".32"/>
-        </svg>
-      </button>
-      <button class="ruin" data-target="about" aria-label="Go to About" title="About">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-          <polygon class="glyph" points="50,10 92,90 8,90"/>
-          <path d="M60 72 l5 8 l-8 0 z" fill="#f4e9c5" opacity=".30"/>
-        </svg>
-      </button>
+      <button class="ruin" data-target="home" aria-label="Home"><div class="tri"></div></button>
+      <button class="ruin" data-target="gallery" aria-label="Gallery"><div class="tri"></div></button>
+      <button class="ruin" data-target="about" aria-label="About"><div class="tri"></div></button>
     </nav>
 
-    <!-- RUIN RAIL – BOTTOM (mirrored set; you can add more if you expand sections) -->
+    <!-- RUINS BOTTOM -->
     <nav class="ruin-rail bottom" aria-label="Secondary navigation (bottom)">
-      <button class="ruin" data-target="home" aria-label="Go to Home" title="Home (bottom)">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" style="transform:rotate(180deg)">
-          <polygon class="glyph" points="50,10 92,90 8,90"/>
-          <path d="M36 28 l6 -10 l-10 0 z" fill="#f4e9c5" opacity=".30"/>
-        </svg>
-      </button>
-      <button class="ruin" data-target="gallery" aria-label="Go to Gallery" title="Gallery (bottom)">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" style="transform:rotate(180deg)">
-          <polygon class="glyph" points="50,10 92,90 8,90"/>
-        </svg>
-      </button>
-      <button class="ruin" data-target="about" aria-label="Go to About" title="About (bottom)">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false" style="transform:rotate(180deg)">
-          <polygon class="glyph" points="50,10 92,90 8,90"/>
-        </svg>
-      </button>
+      <button class="ruin" data-target="home" aria-label="Home (bottom)"><div class="tri"></div></button>
+      <button class="ruin" data-target="gallery" aria-label="Gallery (bottom)"><div class="tri"></div></button>
+      <button class="ruin" data-target="about" aria-label="About (bottom)"><div class="tri"></div></button>
     </nav>
 
-    <!-- MAIN CONTENT (central framed panel) -->
-    <div class="content" id="content">
+    <!-- MENU (clean, whimsical) -->
+    <button id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="menuPanel">Menu</button>
+    <aside id="menuPanel" class="menu-panel" role="dialog" aria-modal="false" aria-labelledby="menuTitle">
+      <div class="menu-title" id="menuTitle">Navigate</div>
+      <ul class="menu-list">
+        <li><a href="#home" class="menu-link" data-target="home"><span class="menu-glyph"></span>Home</a></li>
+        <li><a href="#gallery" class="menu-link" data-target="gallery"><span class="menu-glyph"></span>Gallery</a></li>
+        <li><a href="#about" class="menu-link" data-target="about"><span class="menu-glyph"></span>About</a></li>
+      </ul>
+    </aside>
+
+    <!-- CONTENT PANEL -->
+    <div class="content">
       <div class="panel" id="panel">
         <main id="main" aria-live="polite">
           <section id="home" class="is-current">
             <h1>Modern Scroll</h1>
             <p>
-              Artsy layout with ancient triangle ruins for navigation. The turquoise mist leaks from the edges
-              and drifts slowly. Click a ruin: content disperses into mist and reforms here.
+              Triangle ruins act as navigation; the center panel is your canvas. The background is a rotating set of static images (no constant animation) that you control.
+              Use the <strong>Menu</strong> button for a soft, modern panel with labeled links.
             </p>
           </section>
-
           <section id="gallery">
             <h2>Gallery</h2>
-            <p>Put your images here. Keep files ≤ 300 KB each for fast loads. We can add a mist‑fade carousel later.</p>
+            <p>Drop images into <code>/images/</code>, keep each ≤ 300 KB. We can add a mist‑style carousel later if you want — for now we keep it clean and fast.</p>
           </section>
-
           <section id="about">
-            <h2>About this style</h2>
-            <p>
-              Colors and motion are controlled at the top of the file in <code>:root</code>. The background uses
-              GPU‑cheap gradients so it stays smooth on phones. Navigation ruins are real buttons for accessibility.
-            </p>
+            <h2>About</h2>
+            <p>This build removes heavy filters/animations entirely. All motion uses opacity/transform for professional smoothness.</p>
           </section>
         </main>
       </div>
     </div>
-
-    <!-- Tools: motion toggle (keeps site accessible & professional) -->
-    <div class="toolbar">
-      <button id="motionToggle" class="toolbtn" aria-pressed="false" aria-label="Toggle reduced motion">Reduce motion</button>
-    </div>
   </div>
 
   <script>
-    // ==========================
-    // INTERACTION LOGIC – Ruins switch sections with disperse/condense.
-    // ==========================
-    const contentWrap = document.getElementById('content');
+    // =====================================
+    // 7) BACKGROUND ROTATION (no constant animation)
+    // =====================================
+    const BG_IMAGES = [
+      '/bg/bg-01.jpg', // 1920×1200 or 1920×1080, ≤ 400 KB
+      '/bg/bg-02.jpg',
+      '/bg/bg-03.jpg'
+    ];
+    const ROTATE = true;          // set to false if you want a single static image
+    const SWAP_MS = 15000;        // 15s between swaps
+    const FADE_MS = 500;          // cross-fade length
+
+    const bg = document.getElementById('bg');
+    let bgIndex = 0; let bgImgs = [];
+
+    function preload(src){ const img = new Image(); img.src = src; return img; }
+    function showBg(i){ bgImgs.forEach((el,idx)=> el.classList.toggle('is-active', idx===i)); }
+
+    // Build DOM images once
+    BG_IMAGES.forEach((src, i)=>{ const el = document.createElement('img'); el.alt = ''; el.decoding = 'async'; el.loading = i? 'lazy':'eager'; el.src = src; if(i===0) el.classList.add('is-active'); bg.appendChild(el); bgImgs.push(el); preload(src); });
+
+    if(ROTATE && BG_IMAGES.length > 1){ setInterval(()=>{ bgIndex = (bgIndex+1)%BG_IMAGES.length; showBg(bgIndex); }, SWAP_MS); }
+
+    // =====================================
+    // 8) MENU TOGGLE (soft open/close)
+    // =====================================
+    const menuToggle = document.getElementById('menuToggle');
+    const menuPanel  = document.getElementById('menuPanel');
+    function toggleMenu(force){ const open = force ?? !menuPanel.classList.contains('is-open'); menuPanel.classList.toggle('is-open', open); menuToggle.setAttribute('aria-expanded', String(open)); }
+    menuToggle.addEventListener('click', ()=> toggleMenu());
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') toggleMenu(false); });
+
+    // Close when clicking a menu link (and navigate)
+    document.querySelectorAll('.menu-link').forEach(a=> a.addEventListener('click', (e)=>{ e.preventDefault(); goTo(a.dataset.target); toggleMenu(false); }));
+
+    // =====================================
+    // 9) SECTION SWITCHING (ruins + menu links)
+    // =====================================
     const panel = document.getElementById('panel');
-    const mist = document.getElementById('mist');
     const sections = Array.from(document.querySelectorAll('main > section'));
+    const current = () => sections.find(s => s.classList.contains('is-current'));
 
-    function currentSection(){ return sections.find(s => s.classList.contains('is-current')); }
-
-    function goToSection(id){
-      const from = currentSection();
+    function goTo(id){
+      const from = current();
       const to = document.getElementById(id);
       if(!to || to===from) return;
-
-      // outgoing
-      from.classList.remove('is-current');
-      from.classList.add('disperse');
-      mist.classList.add('is-strong');
-      panel.classList.add('warp-on');
-
-      // after animation length, switch
+      from.classList.remove('is-current'); from.classList.add('disperse');
       const dur = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--transition-ms'));
-      setTimeout(()=>{
-        from.classList.remove('disperse');
-        to.classList.add('is-current','condense');
-        setTimeout(()=>{
-          to.classList.remove('condense');
-          mist.classList.remove('is-strong');
-          panel.classList.remove('warp-on');
-        }, 420);
-      }, dur);
+      setTimeout(()=>{ from.classList.remove('disperse'); to.classList.add('is-current','condense'); setTimeout(()=> to.classList.remove('condense'), 360); }, dur);
     }
 
     document.querySelectorAll('.ruin').forEach(btn=>{
-      btn.addEventListener('click', ()=> goToSection(btn.dataset.target));
-
-      // simple keyboard support
-      btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); goToSection(btn.dataset.target); }});
-    });
-
-    // Reduce Motion toggle
-    const motionToggle = document.getElementById('motionToggle');
-    motionToggle.addEventListener('click', ()=>{
-      const on = document.body.classList.toggle('reduce-motion');
-      motionToggle.setAttribute('aria-pressed', String(on));
-      motionToggle.textContent = on ? 'Enable motion' : 'Reduce motion';
+      btn.addEventListener('click', ()=> goTo(btn.dataset.target));
+      btn.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); goTo(btn.dataset.target); }});
     });
   </script>
 </body>
 </html>
+
